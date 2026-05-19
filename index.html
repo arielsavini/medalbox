@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>MedalBox – Vitrina de Medallas</title>
+  <meta name="description" content="Digitalizá tus medallas y compartí tus logros deportivos" />
+  <meta name="theme-color" content="#0f0800" />
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0f0800;
+      --wood: #1c0e04;
+      --surface: #231208;
+      --surface2: #2e1a0a;
+      --border: #3d2510;
+      --text: #f5e8d0;
+      --muted: #9e7d5e;
+      --accent: #ffd700;
+      --accent-light: #ffe878;
+      --gold: #f5a623;
+      --silver: #b8bec8;
+      --bronze: #cd7f32;
+      --blue: #4a90d9;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      min-height: 100dvh;
+      overflow-x: hidden;
+    }
+
+    /* ── HEADER ── */
+    .app-header {
+      display: flex; align-items: center; gap: 10px;
+      padding: 13px 18px;
+      background: var(--wood);
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 20;
+    }
+    .app-header h1 { font-size: 18px; font-weight: 900; letter-spacing: .5px; }
+    .accent { color: var(--accent); }
+    .medal-count {
+      margin-left: auto; font-size: 10px; color: var(--muted);
+      font-family: 'Space Mono', monospace; letter-spacing: 1px;
+      border: 1px solid var(--border); padding: 3px 8px; border-radius: 20px;
+    }
+
+    /* ── TROPHY WALL ── */
+    .trophy-wall {
+      min-height: calc(100dvh - 56px);
+      padding: 24px 16px 110px;
+      background:
+        repeating-linear-gradient(0deg, transparent 0, transparent 39px, rgba(0,0,0,.09) 39px, rgba(0,0,0,.09) 40px),
+        repeating-linear-gradient(90deg, transparent 0, transparent 99px, rgba(255,255,255,.012) 99px, rgba(255,255,255,.012) 100px),
+        linear-gradient(160deg, #3d2010 0%, #1e0f05 35%, #2f1607 70%, #160b03 100%);
+    }
+
+    /* ── EMPTY STATE ── */
+    .empty-state {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; min-height: 60vh;
+      gap: 12px; text-align: center; padding: 20px;
+    }
+    .empty-icon { font-size: 72px; filter: drop-shadow(0 8px 24px rgba(255,215,0,.3)); }
+    .empty-title { font-size: 22px; font-weight: 900; }
+    .empty-sub { font-size: 13px; color: var(--muted); line-height: 1.6; max-width: 270px; }
+    .btn-empty-add {
+      margin-top: 8px; padding: 12px 30px;
+      background: var(--accent); color: #000;
+      font-weight: 900; font-size: 13px; border: none; border-radius: 30px;
+      cursor: pointer; font-family: 'Space Mono', monospace;
+      box-shadow: 0 4px 20px rgba(255,215,0,.35);
+    }
+
+    /* ── MEDAL GRID ── */
+    .medal-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 28px 16px;
+    }
+
+    /* ── MEDAL ITEM ── */
+    .medal-item {
+      display: flex; flex-direction: column; align-items: center;
+      cursor: pointer; user-select: none;
+      animation: dropIn .5s cubic-bezier(.34,1.56,.64,1) both;
+    }
+    @keyframes dropIn {
+      from { transform: translateY(-40px) scale(.8); opacity: 0; }
+      to   { transform: none; opacity: 1; }
+    }
+    .medal-hook {
+      width: 16px; height: 10px;
+      border: 3.5px solid #5a3c10;
+      border-bottom: none; border-radius: 10px 10px 0 0;
+    }
+    .medal-ribbon {
+      width: 7px; height: 30px;
+      flex-shrink: 0;
+    }
+    .medal-disc {
+      width: 116px; height: 116px; border-radius: 50%;
+      overflow: hidden;
+      background: var(--surface2);
+      box-shadow: 0 8px 32px rgba(0,0,0,.75), inset 0 0 0 2px rgba(255,215,0,.18);
+      transition: transform .22s cubic-bezier(.34,1.56,.64,1), box-shadow .2s;
+    }
+    .medal-item:hover .medal-disc,
+    .medal-item:active .medal-disc {
+      transform: scale(1.07) rotate(-3deg);
+      box-shadow: 0 20px 52px rgba(0,0,0,.85), 0 0 0 3px rgba(255,215,0,.45);
+    }
+    .medal-disc img { width: 100%; height: 100%; object-fit: cover; }
+    .medal-caption {
+      margin-top: 9px; text-align: center; max-width: 130px;
+    }
+    .medal-caption-name {
+      font-size: 11px; font-weight: 700; color: var(--text);
+      line-height: 1.3;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .medal-caption-meta {
+      font-size: 10px; color: var(--accent);
+      font-family: 'Space Mono', monospace; margin-top: 3px;
+    }
+
+    /* ── FAB ── */
+    .fab {
+      position: fixed; bottom: 26px; right: 20px;
+      width: 58px; height: 58px; border-radius: 50%;
+      background: var(--accent); color: #000;
+      font-size: 28px; line-height: 1; border: none;
+      cursor: pointer; z-index: 30;
+      box-shadow: 0 4px 20px rgba(255,215,0,.45);
+      display: flex; align-items: center; justify-content: center;
+      transition: transform .15s, box-shadow .15s;
+    }
+    .fab:active { transform: scale(.9); }
+
+    /* ── BOTTOM SHEET ── */
+    .sheet-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.7);
+      z-index: 40; opacity: 0; pointer-events: none; transition: opacity .25s;
+    }
+    .sheet-overlay.open { opacity: 1; pointer-events: all; }
+    .bottom-sheet {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: var(--surface); border-radius: 20px 20px 0 0;
+      border-top: 1px solid var(--border);
+      max-height: 94dvh; overflow-y: auto;
+      z-index: 41;
+      transform: translateY(100%);
+      transition: transform .3s cubic-bezier(.32,1,.32,1);
+      padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+    .sheet-overlay.open .bottom-sheet { transform: none; }
+    .sheet-handle {
+      width: 36px; height: 4px; background: var(--border);
+      border-radius: 2px; margin: 12px auto 0;
+    }
+    .sheet-header {
+      padding: 14px 18px 6px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .sheet-title { font-size: 16px; font-weight: 900; }
+    .btn-sheet-close {
+      padding: 4px 10px; border-radius: 6px;
+      border: 1px solid var(--border); background: none; color: var(--muted);
+      font-family: 'Space Mono', monospace; font-size: 11px; cursor: pointer;
+    }
+    .sheet-body { padding: 8px 18px 28px; }
+
+    /* ── UPLOAD ZONE ── */
+    .upload-zone {
+      border: 2px dashed var(--border); border-radius: 14px;
+      text-align: center; cursor: pointer;
+      background: var(--surface2); transition: border-color .15s;
+      position: relative; overflow: hidden; margin-bottom: 12px;
+    }
+    .upload-zone:hover { border-color: var(--accent); }
+    .upload-zone input[type=file] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .upload-placeholder { padding: 28px 16px; }
+    .upload-placeholder-icon { font-size: 38px; margin-bottom: 8px; }
+    .upload-placeholder-text { font-size: 13px; color: var(--muted); line-height: 1.5; }
+    .upload-placeholder-text strong { color: var(--text); display: block; margin-bottom: 3px; }
+    .upload-preview {
+      display: none; width: 100%; max-height: 240px;
+      object-fit: contain; border-radius: 12px; padding: 10px;
+    }
+    .upload-preview.show { display: block; }
+
+    /* ── BG REMOVAL BUTTON ── */
+    .btn-remove-bg {
+      display: none; width: 100%; padding: 10px; margin-bottom: 14px;
+      background: rgba(255,215,0,.08); color: var(--accent);
+      border: 1.5px solid rgba(255,215,0,.28); border-radius: 10px;
+      font-family: 'Space Mono', monospace; font-size: 11px; font-weight: 700;
+      cursor: pointer; transition: all .15s; letter-spacing: .5px;
+    }
+    .btn-remove-bg.show { display: block; }
+    .btn-remove-bg:hover { background: rgba(255,215,0,.16); }
+    .btn-remove-bg:disabled { opacity: .45; cursor: not-allowed; }
+
+    /* ── FORM ── */
+    .form-field { margin-bottom: 12px; }
+    .form-field label {
+      display: block; font-size: 10px; font-family: 'Space Mono', monospace;
+      color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 5px;
+    }
+    .form-field input, .form-field select {
+      width: 100%; padding: 10px 12px;
+      background: var(--surface2); border: 1.5px solid var(--border);
+      border-radius: 8px; color: var(--text); font-size: 15px;
+      font-family: 'Space Mono', monospace; outline: none; transition: border-color .15s;
+    }
+    .form-field input:focus, .form-field select:focus { border-color: var(--accent); }
+    .form-field select option { background: var(--surface2); color: var(--text); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    /* ── RIBBON CHIPS ── */
+    .ribbon-chips { display: flex; gap: 7px; }
+    .ribbon-chip {
+      flex: 1; padding: 8px 4px; border-radius: 8px;
+      border: 2px solid var(--border); cursor: pointer;
+      font-size: 10px; font-family: 'Space Mono', monospace; text-align: center;
+      transition: all .15s; background: var(--surface2);
+    }
+    .ribbon-chip[data-r="gold"]   { color: #ffd700; }
+    .ribbon-chip[data-r="silver"] { color: #b8bec8; }
+    .ribbon-chip[data-r="bronze"] { color: #cd7f32; }
+    .ribbon-chip[data-r="blue"]   { color: #4a90d9; }
+    .ribbon-chip.active { border-color: currentColor; background: rgba(255,255,255,.05); }
+
+    .btn-save {
+      width: 100%; padding: 14px;
+      background: var(--accent); color: #000;
+      font-weight: 900; font-size: 14px; border: none; border-radius: 12px;
+      cursor: pointer; font-family: 'Space Mono', monospace; letter-spacing: 1px;
+      margin-top: 8px; transition: opacity .15s;
+      box-shadow: 0 4px 16px rgba(255,215,0,.3);
+    }
+    .btn-save:disabled { opacity: .4; cursor: not-allowed; box-shadow: none; }
+
+    /* ── DETAIL OVERLAY ── */
+    .detail-overlay {
+      position: fixed; inset: 0; z-index: 50;
+      background: var(--bg);
+      transform: translateY(100%);
+      transition: transform .3s cubic-bezier(.32,1,.32,1);
+      overflow-y: auto;
+      padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+    .detail-overlay.open { transform: none; }
+    .detail-header {
+      display: flex; align-items: center; gap: 10px;
+      padding: 13px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--wood);
+      position: sticky; top: 0; z-index: 5;
+    }
+    .btn-back {
+      padding: 6px 12px; border-radius: 8px;
+      border: 1.5px solid var(--border); background: var(--surface2);
+      color: var(--text); font-family: 'Space Mono', monospace; font-size: 11px;
+      cursor: pointer; flex-shrink: 0;
+    }
+    .detail-top-name {
+      font-size: 13px; font-weight: 700;
+      flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+    }
+    .detail-wall {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 30px 20px 14px;
+      background:
+        repeating-linear-gradient(0deg, transparent 0, transparent 39px, rgba(0,0,0,.09) 39px, rgba(0,0,0,.09) 40px),
+        linear-gradient(160deg, #3d2010 0%, #1e0f05 50%, #2f1607 100%);
+    }
+    .detail-hook {
+      width: 20px; height: 13px;
+      border: 4px solid #5a3c10; border-bottom: none; border-radius: 12px 12px 0 0;
+    }
+    .detail-ribbon { width: 9px; height: 44px; }
+    .detail-disc {
+      width: 210px; height: 210px; border-radius: 50%; overflow: hidden;
+      background: var(--surface2);
+      box-shadow: 0 16px 60px rgba(0,0,0,.85), 0 0 0 3px rgba(255,215,0,.22);
+    }
+    .detail-disc img { width: 100%; height: 100%; object-fit: cover; }
+    .detail-body { padding: 22px 18px; max-width: 480px; margin: 0 auto; }
+    .detail-body h2 { font-size: 22px; font-weight: 900; line-height: 1.2; margin-bottom: 4px; }
+    .detail-date { font-size: 12px; color: var(--muted); font-family: 'Space Mono', monospace; margin-bottom: 18px; }
+    .stats-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;
+    }
+    .stat-tile {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 13px 14px;
+    }
+    .stat-tile-val { font-size: 24px; font-weight: 900; color: var(--accent); line-height: 1; }
+    .stat-tile-lbl { font-size: 9px; font-family: 'Space Mono', monospace; color: var(--muted); margin-top: 5px; text-transform: uppercase; letter-spacing: 1px; }
+    .btn-share {
+      width: 100%; padding: 14px; margin-bottom: 10px;
+      background: var(--accent); color: #000;
+      font-weight: 900; font-size: 14px; border: none; border-radius: 12px;
+      cursor: pointer; font-family: 'Space Mono', monospace; letter-spacing: 1px;
+      box-shadow: 0 4px 16px rgba(255,215,0,.3);
+    }
+    .btn-delete {
+      width: 100%; padding: 12px;
+      background: transparent; color: var(--muted);
+      border: 1.5px solid var(--border); border-radius: 12px;
+      font-family: 'Space Mono', monospace; font-size: 11px; cursor: pointer;
+      transition: border-color .15s, color .15s;
+    }
+    .btn-delete:hover { border-color: #ef4444; color: #ef4444; }
+
+    /* ── LOADING ── */
+    .loading-overlay {
+      position: fixed; inset: 0; z-index: 60;
+      background: rgba(0,0,0,.8); backdrop-filter: blur(4px);
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+      opacity: 0; pointer-events: none; transition: opacity .2s;
+    }
+    .loading-overlay.show { opacity: 1; pointer-events: all; }
+    .spinner {
+      width: 42px; height: 42px; border-radius: 50%;
+      border: 3px solid rgba(255,215,0,.2); border-top-color: var(--accent);
+      animation: spin .75s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-msg {
+      font-family: 'Space Mono', monospace; font-size: 12px;
+      color: var(--muted); letter-spacing: 1px; text-align: center; max-width: 260px; line-height: 1.6;
+    }
+
+    /* ── TOAST ── */
+    .toast {
+      position: fixed; bottom: 96px; left: 50%; transform: translateX(-50%);
+      background: var(--surface); border: 1px solid var(--border);
+      padding: 10px 20px; border-radius: 20px;
+      font-family: 'Space Mono', monospace; font-size: 11px; color: var(--text);
+      opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 80;
+      white-space: nowrap; box-shadow: 0 4px 20px rgba(0,0,0,.5);
+    }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+
+<div class="app-header">
+  <span style="font-size:22px;line-height:1">🏅</span>
+  <h1>Medal<span class="accent">Box</span></h1>
+  <div class="medal-count" id="medalCount">0 medallas</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ── TROPHY WALL ── -->
+<div class="trophy-wall" id="trophyWall"></div>
+
+<!-- ── FAB ── -->
+<button class="fab" id="fabAdd">+</button>
+
+<!-- ── BOTTOM SHEET (Add medal) ── -->
+<div class="sheet-overlay" id="sheetOverlay">
+  <div class="bottom-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div class="sheet-title">🏅 Nueva medalla</div>
+      <button class="btn-sheet-close" id="btnSheetClose">✕ Cerrar</button>
+    </div>
+    <div class="sheet-body">
+
+      <!-- Upload -->
+      <div class="upload-zone" id="uploadZone">
+        <input type="file" id="fileInput" accept="image/*" />
+        <img class="upload-preview" id="uploadPreview" alt="medalla" />
+        <div class="upload-placeholder" id="uploadPlaceholder">
+          <div class="upload-placeholder-icon">📷</div>
+          <div class="upload-placeholder-text">
+            <strong>Foto de la medalla</strong>
+            seleccioná desde la galería o tomá una nueva
+          </div>
+        </div>
+      </div>
+
+      <!-- BG removal -->
+      <button class="btn-remove-bg" id="btnRemoveBg">
+        ✨ QUITAR FONDO CON IA  (descarga ~25 MB la primera vez)
+      </button>
+
+      <!-- Stats form -->
+      <div class="form-field">
+        <label>Nombre del evento</label>
+        <input type="text" id="fName" placeholder="Ej: Maratón de Buenos Aires 2024" />
+      </div>
+      <div class="form-row">
+        <div class="form-field">
+          <label>Fecha</label>
+          <input type="date" id="fDate" />
+        </div>
+        <div class="form-field">
+          <label>Distancia</label>
+          <select id="fDist">
+            <option value="5K">5K</option>
+            <option value="10K">10K</option>
+            <option value="15K">15K</option>
+            <option value="21K" selected>21K</option>
+            <option value="42K">42K</option>
+            <option value="Trail">Trail</option>
+            <option value="Ultra">Ultra</option>
+            <option value="Triatlón">Triatlón</option>
+            <option value="Ciclismo">Ciclismo</option>
+            <option value="Otro">Otro</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-field">
+          <label>Tiempo (hh:mm:ss)</label>
+          <input type="text" id="fTime" placeholder="04:23:15" />
+        </div>
+        <div class="form-field">
+          <label>Posición general</label>
+          <input type="number" id="fPos" placeholder="342" min="1" />
+        </div>
+      </div>
+      <div class="form-field">
+        <label>Color de cinta</label>
+        <div class="ribbon-chips" id="ribbonChips">
+          <button class="ribbon-chip active" data-r="gold">🥇 Oro</button>
+          <button class="ribbon-chip" data-r="silver">🥈 Plata</button>
+          <button class="ribbon-chip" data-r="bronze">🥉 Bronce</button>
+          <button class="ribbon-chip" data-r="blue">💙 Azul</button>
+        </div>
+      </div>
+
+      <button class="btn-save" id="btnSave" disabled>💾 GUARDAR MEDALLA</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── DETAIL OVERLAY ── -->
+<div class="detail-overlay" id="detailOverlay">
+  <div class="detail-header">
+    <button class="btn-back" id="btnBack">← Volver</button>
+    <div class="detail-top-name" id="detailTopName"></div>
+  </div>
+  <div class="detail-wall">
+    <div class="detail-hook"></div>
+    <div class="detail-ribbon" id="detailRibbon"></div>
+    <div class="detail-disc">
+      <img id="detailImg" src="" alt="medalla" />
+    </div>
+  </div>
+  <div class="detail-body">
+    <h2 id="detailName"></h2>
+    <div class="detail-date" id="detailDate"></div>
+    <div class="stats-grid" id="detailStats"></div>
+    <button class="btn-share" id="btnShare">📤 COMPARTIR EN REDES</button>
+    <button class="btn-delete" id="btnDelete">🗑 Eliminar medalla</button>
+  </div>
+</div>
+
+<!-- ── LOADING ── -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-msg" id="loadingMsg">Procesando…</div>
+</div>
+
+<script>
+// ── CONSTANTS ──
+const RIBBON_COLORS = { gold: '#f5a623', silver: '#b8bec8', bronze: '#cd7f32', blue: '#4a90d9' };
+const MAX_IMG_PX = 900;
+
+// ── STORAGE ──
+function loadMedals() {
+  try { return JSON.parse(localStorage.getItem('medalbox_v1') || '[]'); }
+  catch { return []; }
+}
+function saveMedals(arr) {
+  try { localStorage.setItem('medalbox_v1', JSON.stringify(arr)); }
+  catch(e) {
+    if (e.name === 'QuotaExceededError') showToast('⚠ Almacenamiento lleno');
+  }
+}
+
+// ── STATE ──
+let medals = loadMedals();
+let currentImage = null; // base64 compressed
+let selectedRibbon = 'gold';
+let activeId = null;
+
+// ── UID ──
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+
+// ── IMAGE COMPRESSION ──
+function compressImage(dataURL, maxPx = MAX_IMG_PX, quality = 0.82) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const ratio = Math.min(maxPx / img.width, maxPx / img.height, 1);
+      const w = Math.round(img.width * ratio);
+      const h = Math.round(img.height * ratio);
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(c.toDataURL('image/jpeg', quality));
+    };
+    img.src = dataURL;
+  });
+}
+
+function blobToDataURL(blob) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = e => res(e.target.result);
+    r.onerror = rej;
+    r.readAsDataURL(blob);
+  });
+}
+
+// ── RENDER WALL ──
+function renderWall() {
+  const wall = document.getElementById('trophyWall');
+  const n = medals.length;
+  document.getElementById('medalCount').textContent = `${n} medalla${n !== 1 ? 's' : ''}`;
+
+  if (n === 0) {
+    wall.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">🏆</div>
+        <div class="empty-title">Tu vitrina está vacía</div>
+        <div class="empty-sub">Cada medalla es un logro que merece ser recordado. ¡Comenzá tu colección!</div>
+        <button class="btn-empty-add" id="btnEmptyAdd">+ Agregar primera medalla</button>
+      </div>`;
+    document.getElementById('btnEmptyAdd').addEventListener('click', openSheet);
+    return;
+  }
+
+  const grid = document.createElement('div');
+  grid.className = 'medal-grid';
+
+  medals.forEach((m, i) => {
+    const rc = RIBBON_COLORS[m.ribbon] || RIBBON_COLORS.gold;
+    const el = document.createElement('div');
+    el.className = 'medal-item';
+    el.style.animationDelay = `${Math.min(i, 8) * 0.06}s`;
+    el.innerHTML = `
+      <div class="medal-hook"></div>
+      <div class="medal-ribbon" style="background:${rc}"></div>
+      <div class="medal-disc">
+        <img src="${m.image}" alt="${m.name}" loading="lazy" />
+      </div>
+      <div class="medal-caption">
+        <div class="medal-caption-name">${m.name}</div>
+        <div class="medal-caption-meta">${m.distance}${m.time ? ' · ' + m.time : ''}</div>
+      </div>`;
+    el.addEventListener('click', () => openDetail(m.id));
+    grid.appendChild(el);
+  });
+
+  wall.innerHTML = '';
+  wall.appendChild(grid);
+}
+
+// ── SHEET ──
+function openSheet() {
+  currentImage = null;
+  selectedRibbon = 'gold';
+  document.getElementById('fileInput').value = '';
+  document.getElementById('uploadPreview').classList.remove('show');
+  document.getElementById('uploadPreview').src = '';
+  document.getElementById('uploadPlaceholder').style.display = '';
+  document.getElementById('btnRemoveBg').classList.remove('show');
+  document.getElementById('btnRemoveBg').disabled = false;
+  document.getElementById('btnRemoveBg').textContent = '✨ QUITAR FONDO CON IA  (descarga ~25 MB la primera vez)';
+  document.getElementById('fName').value = '';
+  document.getElementById('fDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('fDist').value = '21K';
+  document.getElementById('fTime').value = '';
+  document.getElementById('fPos').value = '';
+  document.querySelectorAll('.ribbon-chip').forEach(c =>
+    c.classList.toggle('active', c.dataset.r === 'gold')
+  );
+  document.getElementById('btnSave').disabled = true;
+  document.getElementById('sheetOverlay').classList.add('open');
+}
+
+function closeSheet() {
+  document.getElementById('sheetOverlay').classList.remove('open');
+}
+
+document.getElementById('fabAdd').addEventListener('click', openSheet);
+document.getElementById('btnSheetClose').addEventListener('click', closeSheet);
+document.getElementById('sheetOverlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('sheetOverlay')) closeSheet();
+});
+
+// ── FILE INPUT ──
+document.getElementById('fileInput').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  showLoading('Cargando imagen…');
+  try {
+    const reader = new FileReader();
+    const raw = await new Promise((res, rej) => {
+      reader.onload = ev => res(ev.target.result);
+      reader.onerror = rej;
+      reader.readAsDataURL(file);
+    });
+    currentImage = await compressImage(raw);
+    document.getElementById('uploadPreview').src = currentImage;
+    document.getElementById('uploadPreview').classList.add('show');
+    document.getElementById('uploadPlaceholder').style.display = 'none';
+    document.getElementById('btnRemoveBg').classList.add('show');
+    document.getElementById('btnSave').disabled = false;
+  } catch { showToast('Error al cargar imagen'); }
+  finally { hideLoading(); }
+});
+
+// ── BACKGROUND REMOVAL ──
+document.getElementById('btnRemoveBg').addEventListener('click', async () => {
+  const file = document.getElementById('fileInput').files[0];
+  if (!file) return;
+  const btn = document.getElementById('btnRemoveBg');
+  btn.disabled = true;
+  showLoading('Cargando modelo de IA…\n(~25 MB, solo la primera vez)');
+  try {
+    const { removeBackground } = await import(
+      'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/dist/browser.bundle.js'
+    );
+    document.getElementById('loadingMsg').textContent = 'Analizando imagen…';
+    const blob = await removeBackground(file, {
+      publicPath: 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/dist/'
+    });
+    currentImage = await blobToDataURL(blob);
+    document.getElementById('uploadPreview').src = currentImage;
+    btn.textContent = '✅ Fondo eliminado';
+    showToast('¡Fondo removido con IA!');
+  } catch(e) {
+    console.error(e);
+    btn.disabled = false;
+    showToast('⚠ No se pudo quitar el fondo. Intento cancelado.');
+  } finally { hideLoading(); }
+});
+
+// ── RIBBON SELECTION ──
+document.getElementById('ribbonChips').addEventListener('click', e => {
+  const c = e.target.closest('.ribbon-chip'); if (!c) return;
+  document.querySelectorAll('.ribbon-chip').forEach(x => x.classList.remove('active'));
+  c.classList.add('active');
+  selectedRibbon = c.dataset.r;
+});
+
+// ── SAVE ──
+document.getElementById('btnSave').addEventListener('click', () => {
+  if (!currentImage) return;
+  const medal = {
+    id: uid(),
+    image: currentImage,
+    name: document.getElementById('fName').value.trim() || 'Sin nombre',
+    date: document.getElementById('fDate').value,
+    distance: document.getElementById('fDist').value,
+    time: document.getElementById('fTime').value.trim(),
+    position: document.getElementById('fPos').value.trim(),
+    ribbon: selectedRibbon,
+  };
+  medals.unshift(medal);
+  saveMedals(medals);
+  closeSheet();
+  renderWall();
+  showToast('🏅 ¡Medalla guardada!');
+});
+
+// ── DETAIL ──
+function openDetail(id) {
+  const m = medals.find(x => x.id === id);
+  if (!m) return;
+  activeId = id;
+  const rc = RIBBON_COLORS[m.ribbon] || RIBBON_COLORS.gold;
+
+  document.getElementById('detailTopName').textContent = m.name;
+  document.getElementById('detailImg').src = m.image;
+  document.getElementById('detailRibbon').style.background = rc;
+  document.getElementById('detailName').textContent = m.name;
+
+  const dateStr = m.date
+    ? new Date(m.date + 'T12:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })
+    : '';
+  document.getElementById('detailDate').textContent = dateStr;
+
+  const tiles = [{ val: m.distance, lbl: 'Distancia' }];
+  if (m.time)     tiles.push({ val: m.time, lbl: 'Tiempo' });
+  if (m.position) tiles.push({ val: `#${m.position}`, lbl: 'Posición' });
+  if (m.date)     tiles.push({ val: new Date(m.date + 'T12:00:00').getFullYear(), lbl: 'Año' });
+
+  document.getElementById('detailStats').innerHTML = tiles.map(t =>
+    `<div class="stat-tile">
+      <div class="stat-tile-val">${t.val}</div>
+      <div class="stat-tile-lbl">${t.lbl}</div>
+    </div>`
+  ).join('');
+
+  document.getElementById('detailOverlay').classList.add('open');
+}
+
+document.getElementById('btnBack').addEventListener('click', () => {
+  document.getElementById('detailOverlay').classList.remove('open');
+  activeId = null;
+});
+
+document.getElementById('btnDelete').addEventListener('click', () => {
+  if (!activeId || !confirm('¿Eliminar esta medalla?')) return;
+  medals = medals.filter(m => m.id !== activeId);
+  saveMedals(medals);
+  document.getElementById('detailOverlay').classList.remove('open');
+  activeId = null;
+  renderWall();
+  showToast('Medalla eliminada');
+});
+
+// ── SHARE ──
+document.getElementById('btnShare').addEventListener('click', async () => {
+  const m = medals.find(x => x.id === activeId);
+  if (!m) return;
+  showLoading('Generando tarjeta…');
+  try {
+    const canvas = await buildShareCard(m);
+    canvas.toBlob(async blob => {
+      hideLoading();
+      const file = new File([blob], 'medalbox.jpg', { type: 'image/jpeg' });
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({
+          title: `🏅 ${m.name}`,
+          text: `Completé ${m.distance}${m.time ? ' en ' + m.time : ''} 🏅`,
+          files: [file],
+        });
+      } else {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `medalbox-${m.id}.jpg`;
+        a.click();
+        showToast('Imagen descargada');
+      }
+    }, 'image/jpeg', 0.92);
+  } catch(e) {
+    hideLoading();
+    console.error(e);
+    showToast('Error al compartir');
+  }
+});
+
+async function buildShareCard(medal) {
+  const S = 1080;
+  const canvas = document.createElement('canvas');
+  canvas.width = S; canvas.height = S;
+  const ctx = canvas.getContext('2d');
+
+  // Wood background
+  const bg = ctx.createLinearGradient(0, 0, S, S);
+  bg.addColorStop(0, '#3d2010'); bg.addColorStop(.35, '#1e0f05');
+  bg.addColorStop(.7, '#2f1607'); bg.addColorStop(1, '#160b03');
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, S, S);
+
+  // Grid lines
+  ctx.strokeStyle = 'rgba(0,0,0,.1)'; ctx.lineWidth = 1;
+  for (let y = 0; y < S; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(S, y); ctx.stroke(); }
+  for (let x = 0; x < S; x += 100) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, S); ctx.stroke(); }
+
+  // Ribbon + hook above medal
+  const cx = S / 2, cy = 430, r = 290;
+  const rc = RIBBON_COLORS[medal.ribbon] || RIBBON_COLORS.gold;
+  ctx.fillStyle = rc;
+  ctx.fillRect(cx - 6, cy - r - 70, 12, 70);
+  ctx.beginPath();
+  ctx.arc(cx, cy - r - 73, 13, Math.PI, 0);
+  ctx.strokeStyle = '#5a3c10'; ctx.lineWidth = 6; ctx.stroke();
+
+  // Medal image in circle
+  await new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      ctx.save();
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.clip();
+      ctx.drawImage(img, cx - r, cy - r, r * 2, r * 2);
+      ctx.restore();
+      // Gold ring
+      ctx.beginPath(); ctx.arc(cx, cy, r + 5, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255,215,0,.55)'; ctx.lineWidth = 5; ctx.stroke();
+      resolve();
+    };
+    img.src = medal.image;
+  });
+
+  // Event name (word-wrap)
+  ctx.textAlign = 'center'; ctx.fillStyle = '#f5e8d0';
+  ctx.font = '900 50px Inter, sans-serif';
+  const words = medal.name.split(' ');
+  let lines = [], ln = '';
+  for (const w of words) {
+    const t = ln ? ln + ' ' + w : w;
+    if (ctx.measureText(t).width > S - 90 && ln) { lines.push(ln); ln = w; }
+    else ln = t;
+  }
+  lines.push(ln);
+  const ly = 790;
+  lines.slice(0, 2).forEach((l, i) => ctx.fillText(l, cx, ly + i * 56));
+
+  // Stats
+  const sy = ly + Math.min(lines.length, 2) * 56 + 28;
+  ctx.font = '700 36px Space Mono, monospace'; ctx.fillStyle = '#ffd700';
+  const parts = [medal.distance];
+  if (medal.time) parts.push(medal.time);
+  if (medal.position) parts.push(`#${medal.position}`);
+  ctx.fillText(parts.join('  ·  '), cx, sy);
+
+  // Date
+  if (medal.date) {
+    const ds = new Date(medal.date + 'T12:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
+    ctx.font = '26px Space Mono, monospace'; ctx.fillStyle = '#9e7d5e';
+    ctx.fillText(ds, cx, sy + 46);
+  }
+
+  // Branding
+  ctx.font = '24px Space Mono, monospace'; ctx.fillStyle = 'rgba(158,125,94,.6)';
+  ctx.fillText('🏅 MedalBox · arielsavini.github.io/medalbox', cx, S - 34);
+
+  return canvas;
+}
+
+// ── HELPERS ──
+function showLoading(msg = 'Procesando…') {
+  document.getElementById('loadingMsg').textContent = msg;
+  document.getElementById('loadingOverlay').classList.add('show');
+}
+function hideLoading() {
+  document.getElementById('loadingOverlay').classList.remove('show');
+}
+let toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+// ── INIT ──
+renderWall();
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
