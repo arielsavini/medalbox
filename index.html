@@ -625,7 +625,7 @@ function renderWall() {
         <div class="empty-sub">Cada medalla es un logro que merece ser recordado. ¡Comenzá tu colección!</div>
         <button class="btn-empty-add" id="btnEmptyAdd">+ Agregar primera medalla</button>
       </div>`;
-    document.getElementById('btnEmptyAdd').addEventListener('click', openSheet);
+    document.getElementById('btnEmptyAdd').addEventListener('click', () => openSheet());
     return;
   }
 
@@ -720,7 +720,7 @@ document.getElementById('fDist').addEventListener('change', e => {
   if (!isOtro) document.getElementById('fDistCustom').value = '';
 });
 
-document.getElementById('fabAdd').addEventListener('click', openSheet);
+document.getElementById('fabAdd').addEventListener('click', () => openSheet());
 document.getElementById('btnSheetClose').addEventListener('click', closeSheet);
 document.getElementById('sheetOverlay').addEventListener('click', e => {
   if (e.target === document.getElementById('sheetOverlay')) closeSheet();
