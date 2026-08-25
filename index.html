@@ -90,13 +90,12 @@
     /* ── MEDAL GRID ── */
     .medal-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-      gap: 28px 16px;
+      grid-template-columns: repeat(auto-fill, minmax(152px, 1fr));
+      gap: 26px 16px;
     }
 
-    /* ── MEDAL ITEM ── */
+    /* ── MEDAL ITEM (framed showcase) ── */
     .medal-item {
-      display: flex; flex-direction: column; align-items: center;
       cursor: pointer; user-select: none;
       animation: dropIn .5s cubic-bezier(.34,1.56,.64,1) both;
     }
@@ -104,38 +103,67 @@
       from { transform: translateY(-40px) scale(.8); opacity: 0; }
       to   { transform: none; opacity: 1; }
     }
+    .medal-frame {
+      position: relative;
+      display: flex; flex-direction: column; align-items: center;
+      padding: 20px 10px 8px;
+      border-radius: 8px;
+      background: linear-gradient(160deg, #241407 0%, #170d05 100%);
+      box-shadow:
+        0 0 0 3px #7a4f24,
+        0 0 0 5px #33200e,
+        0 0 0 9px #9c6b34,
+        0 0 0 10px rgba(0,0,0,.45),
+        0 14px 30px rgba(0,0,0,.65);
+      transition: transform .22s cubic-bezier(.34,1.56,.64,1), box-shadow .2s;
+    }
+    .medal-item:hover .medal-frame,
+    .medal-item:active .medal-frame {
+      transform: translateY(-5px) scale(1.035);
+      box-shadow:
+        0 0 0 3px #8d5c2c,
+        0 0 0 5px #33200e,
+        0 0 0 9px #ba8140,
+        0 0 0 10px rgba(0,0,0,.45),
+        0 22px 46px rgba(0,0,0,.78);
+    }
+    .medal-frame-glass {
+      position: absolute; inset: 0; border-radius: 8px;
+      background: linear-gradient(135deg, rgba(255,255,255,.09) 0%, rgba(255,255,255,.02) 32%, transparent 55%);
+      pointer-events: none;
+    }
     .medal-hook {
       width: 16px; height: 10px;
       border: 3.5px solid #5a3c10;
       border-bottom: none; border-radius: 10px 10px 0 0;
+      position: relative; z-index: 1;
     }
     .medal-ribbon {
-      width: 7px; height: 30px;
-      flex-shrink: 0;
+      width: 7px; height: 26px;
+      flex-shrink: 0; position: relative; z-index: 1;
     }
     .medal-disc {
-      width: 116px; height: 116px; border-radius: 50%;
-      overflow: hidden;
+      width: 104px; height: 104px; border-radius: 50%;
+      overflow: hidden; flex-shrink: 0; position: relative; z-index: 1;
       background: var(--surface2);
-      box-shadow: 0 8px 32px rgba(0,0,0,.75), inset 0 0 0 2px rgba(255,215,0,.18);
-      transition: transform .22s cubic-bezier(.34,1.56,.64,1), box-shadow .2s;
-    }
-    .medal-item:hover .medal-disc,
-    .medal-item:active .medal-disc {
-      transform: scale(1.07) rotate(-3deg);
-      box-shadow: 0 20px 52px rgba(0,0,0,.85), 0 0 0 3px rgba(255,215,0,.45);
+      box-shadow: 0 8px 26px rgba(0,0,0,.7), inset 0 0 0 2px rgba(255,215,0,.18);
     }
     .medal-disc img { width: 100%; height: 100%; object-fit: cover; }
-    .medal-caption {
-      margin-top: 9px; text-align: center; max-width: 130px;
+    .medal-plaque {
+      margin-top: 10px; width: 100%; position: relative; z-index: 1;
+      background: linear-gradient(160deg, #3a2a12 0%, #1f1408 100%);
+      border: 1px solid rgba(255,215,0,.32);
+      border-radius: 5px;
+      padding: 6px 6px 5px;
+      text-align: center;
     }
-    .medal-caption-name {
-      font-size: 11px; font-weight: 700; color: var(--text);
-      line-height: 1.3;
+    .medal-plaque-name {
+      font-size: 10.5px; font-weight: 700; color: var(--accent-light);
+      line-height: 1.25; letter-spacing: .2px;
       display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
     }
-    .medal-caption-meta {
-      font-size: 10px; color: var(--accent);
+    .medal-plaque-meta {
+      font-size: 9px; color: var(--muted);
       font-family: 'Space Mono', monospace; margin-top: 3px;
     }
 
@@ -290,7 +318,7 @@
     }
     .detail-wall {
       display: flex; flex-direction: column; align-items: center;
-      padding: 30px 20px 14px;
+      padding: 34px 20px 26px;
       background:
         repeating-linear-gradient(0deg, transparent 0, transparent 39px, rgba(0,0,0,.09) 39px, rgba(0,0,0,.09) 40px),
         repeating-linear-gradient(90deg, rgba(0,0,0,.16) 0px, rgba(0,0,0,.16) 2px, transparent 2px, transparent 8px),
@@ -298,14 +326,33 @@
         repeating-linear-gradient(90deg, rgba(0,0,0,.09) 0px, rgba(0,0,0,.09) 4px, transparent 4px, transparent 27px),
         linear-gradient(160deg, #3d2010 0%, #1e0f05 50%, #2f1607 100%);
     }
+    .detail-frame {
+      position: relative;
+      display: flex; flex-direction: column; align-items: center;
+      padding: 30px 26px 22px;
+      border-radius: 14px;
+      background: linear-gradient(160deg, #241407 0%, #170d05 100%);
+      box-shadow:
+        0 0 0 4px #7a4f24,
+        0 0 0 7px #33200e,
+        0 0 0 13px #9c6b34,
+        0 0 0 14px rgba(0,0,0,.45),
+        0 24px 56px rgba(0,0,0,.7);
+    }
+    .detail-frame-glass {
+      position: absolute; inset: 0; border-radius: 14px;
+      background: linear-gradient(135deg, rgba(255,255,255,.08) 0%, rgba(255,255,255,.02) 32%, transparent 55%);
+      pointer-events: none;
+    }
     .detail-hook {
       width: 20px; height: 13px;
       border: 4px solid #5a3c10; border-bottom: none; border-radius: 12px 12px 0 0;
+      position: relative; z-index: 1;
     }
-    .detail-ribbon { width: 9px; height: 44px; }
+    .detail-ribbon { width: 9px; height: 40px; position: relative; z-index: 1; }
     .detail-disc {
-      width: 210px; height: 210px; border-radius: 50%; overflow: hidden;
-      background: var(--surface2);
+      width: 200px; height: 200px; border-radius: 50%; overflow: hidden;
+      background: var(--surface2); flex-shrink: 0; position: relative; z-index: 1;
       box-shadow: 0 16px 60px rgba(0,0,0,.85), 0 0 0 3px rgba(255,215,0,.22);
     }
     .detail-disc img { width: 100%; height: 100%; object-fit: cover; }
@@ -479,10 +526,13 @@
     <div class="detail-top-name" id="detailTopName"></div>
   </div>
   <div class="detail-wall">
-    <div class="detail-hook"></div>
-    <div class="detail-ribbon" id="detailRibbon"></div>
-    <div class="detail-disc">
-      <img id="detailImg" src="" alt="medalla" />
+    <div class="detail-frame">
+      <div class="detail-frame-glass"></div>
+      <div class="detail-hook"></div>
+      <div class="detail-ribbon" id="detailRibbon"></div>
+      <div class="detail-disc">
+        <img id="detailImg" src="" alt="medalla" />
+      </div>
     </div>
   </div>
   <div class="detail-body">
@@ -589,14 +639,17 @@ function renderWall() {
     el.className = 'medal-item';
     el.style.animationDelay = `${Math.min(i, 8) * 0.06}s`;
     el.innerHTML = `
-      <div class="medal-hook"></div>
-      <div class="medal-ribbon" style="background:${rc}"></div>
-      <div class="medal-disc">
-        <img src="${m.image}" alt="${m.name}" loading="lazy" />
-      </div>
-      <div class="medal-caption">
-        <div class="medal-caption-name">${m.name}</div>
-        <div class="medal-caption-meta">${m.distance}${m.time ? ' · ' + m.time : ''}</div>
+      <div class="medal-frame">
+        <div class="medal-frame-glass"></div>
+        <div class="medal-hook"></div>
+        <div class="medal-ribbon" style="background:${rc}"></div>
+        <div class="medal-disc">
+          <img src="${m.image}" alt="${m.name}" loading="lazy" />
+        </div>
+        <div class="medal-plaque">
+          <div class="medal-plaque-name">${m.name}</div>
+          <div class="medal-plaque-meta">${m.distance}${m.time ? ' · ' + m.time : ''}</div>
+        </div>
       </div>`;
     el.addEventListener('click', () => openDetail(m.id));
     grid.appendChild(el);
