@@ -321,6 +321,14 @@
       transition: border-color .15s, color .15s;
     }
     .btn-delete:hover { border-color: #ef4444; color: #ef4444; }
+    .btn-edit {
+      width: 100%; padding: 13px; margin-bottom: 10px;
+      background: transparent; color: var(--accent);
+      border: 1.5px solid var(--accent); border-radius: 12px;
+      font-family: 'Space Mono', monospace; font-size: 13px; font-weight: 700;
+      cursor: pointer; letter-spacing: .5px; transition: background .15s;
+    }
+    .btn-edit:hover { background: rgba(255,215,0,.08); }
 
     /* ── LOADING ── */
     .loading-overlay {
@@ -374,7 +382,7 @@
   <div class="bottom-sheet">
     <div class="sheet-handle"></div>
     <div class="sheet-header">
-      <div class="sheet-title">🏅 Nueva medalla</div>
+      <div class="sheet-title" id="sheetTitle">🏅 Nueva medalla</div>
       <button class="btn-sheet-close" id="btnSheetClose">✕ Cerrar</button>
     </div>
     <div class="sheet-body">
@@ -419,8 +427,9 @@
             <option value="Ultra">Ultra</option>
             <option value="Triatlón">Triatlón</option>
             <option value="Ciclismo">Ciclismo</option>
-            <option value="Otro">Otro</option>
+            <option value="Otro">Otro…</option>
           </select>
+          <input type="text" id="fDistCustom" placeholder="Ej: 7K, 50K, Aquatlón…" style="display:none; margin-top:7px" />
         </div>
       </div>
       <div class="form-row">
@@ -466,6 +475,7 @@
     <div class="detail-date" id="detailDate"></div>
     <div class="stats-grid" id="detailStats"></div>
     <button class="btn-share" id="btnShare">📤 COMPARTIR EN REDES</button>
+    <button class="btn-edit" id="btnEdit">✏️ EDITAR MEDALLA</button>
     <button class="btn-delete" id="btnDelete">🗑 Eliminar medalla</button>
   </div>
 </div>
@@ -498,6 +508,8 @@ let medals = loadMedals();
 let currentImage = null; // base64 compressed
 let selectedRibbon = 'gold';
 let activeId = null;
+let editingId = null;
+const KNOWN_DISTANCES = ['5K','10K','15K','21K','42K','Trail','Ultra','Triatlón','Ciclismo','Otro'];
 
 // ── UID ──
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -549,7 +561,14 @@ function renderWall() {
   const grid = document.createElement('div');
   grid.className = 'medal-grid';
 
-  medals.forEach((m, i) => {
+  const sorted = [...medals].sort((a, b) => {
+    if (!a.date && !b.date) return 0;
+    if (!a.date) return 1;
+    if (!b.date) return -1;
+    return b.date.localeCompare(a.date);
+  });
+
+  sorted.forEach((m, i) => {
     const rc = RIBBON_COLORS[m.ribbon] || RIBBON_COLORS.gold;
     const el = document.createElement('div');
     el.className = 'medal-item';
@@ -573,31 +592,59 @@ function renderWall() {
 }
 
 // ── SHEET ──
-function openSheet() {
-  currentImage = null;
-  selectedRibbon = 'gold';
+function openSheet(medalToEdit = null) {
+  editingId = medalToEdit ? medalToEdit.id : null;
+  currentImage = medalToEdit ? medalToEdit.image : null;
+  selectedRibbon = medalToEdit ? medalToEdit.ribbon : 'gold';
+
+  document.getElementById('sheetTitle').textContent = medalToEdit ? '✏️ Editar medalla' : '🏅 Nueva medalla';
   document.getElementById('fileInput').value = '';
-  document.getElementById('uploadPreview').classList.remove('show');
-  document.getElementById('uploadPreview').src = '';
-  document.getElementById('uploadPlaceholder').style.display = '';
-  document.getElementById('btnRemoveBg').classList.remove('show');
   document.getElementById('btnRemoveBg').disabled = false;
   document.getElementById('btnRemoveBg').textContent = '✨ QUITAR FONDO CON IA  (descarga ~25 MB la primera vez)';
-  document.getElementById('fName').value = '';
-  document.getElementById('fDate').value = new Date().toISOString().split('T')[0];
-  document.getElementById('fDist').value = '21K';
-  document.getElementById('fTime').value = '';
-  document.getElementById('fPos').value = '';
+
+  if (medalToEdit) {
+    document.getElementById('uploadPreview').src = medalToEdit.image;
+    document.getElementById('uploadPreview').classList.add('show');
+    document.getElementById('uploadPlaceholder').style.display = 'none';
+    document.getElementById('btnRemoveBg').classList.add('show');
+  } else {
+    document.getElementById('uploadPreview').classList.remove('show');
+    document.getElementById('uploadPreview').src = '';
+    document.getElementById('uploadPlaceholder').style.display = '';
+    document.getElementById('btnRemoveBg').classList.remove('show');
+  }
+
+  document.getElementById('fName').value = medalToEdit ? medalToEdit.name : '';
+  document.getElementById('fDate').value = medalToEdit ? medalToEdit.date : new Date().toISOString().split('T')[0];
+
+  if (medalToEdit && !KNOWN_DISTANCES.includes(medalToEdit.distance)) {
+    document.getElementById('fDist').value = 'Otro';
+    document.getElementById('fDistCustom').style.display = '';
+    document.getElementById('fDistCustom').value = medalToEdit.distance;
+  } else {
+    document.getElementById('fDist').value = medalToEdit ? medalToEdit.distance : '21K';
+    document.getElementById('fDistCustom').style.display = 'none';
+    document.getElementById('fDistCustom').value = '';
+  }
+
+  document.getElementById('fTime').value = medalToEdit ? medalToEdit.time : '';
+  document.getElementById('fPos').value = medalToEdit ? medalToEdit.position : '';
   document.querySelectorAll('.ribbon-chip').forEach(c =>
-    c.classList.toggle('active', c.dataset.r === 'gold')
+    c.classList.toggle('active', c.dataset.r === selectedRibbon)
   );
-  document.getElementById('btnSave').disabled = true;
+  document.getElementById('btnSave').disabled = !medalToEdit;
   document.getElementById('sheetOverlay').classList.add('open');
 }
 
 function closeSheet() {
   document.getElementById('sheetOverlay').classList.remove('open');
 }
+
+document.getElementById('fDist').addEventListener('change', e => {
+  const isOtro = e.target.value === 'Otro';
+  document.getElementById('fDistCustom').style.display = isOtro ? '' : 'none';
+  if (!isOtro) document.getElementById('fDistCustom').value = '';
+});
 
 document.getElementById('fabAdd').addEventListener('click', openSheet);
 document.getElementById('btnSheetClose').addEventListener('click', closeSheet);
@@ -664,21 +711,46 @@ document.getElementById('ribbonChips').addEventListener('click', e => {
 // ── SAVE ──
 document.getElementById('btnSave').addEventListener('click', () => {
   if (!currentImage) return;
-  const medal = {
-    id: uid(),
-    image: currentImage,
-    name: document.getElementById('fName').value.trim() || 'Sin nombre',
-    date: document.getElementById('fDate').value,
-    distance: document.getElementById('fDist').value,
-    time: document.getElementById('fTime').value.trim(),
-    position: document.getElementById('fPos').value.trim(),
-    ribbon: selectedRibbon,
-  };
-  medals.unshift(medal);
-  saveMedals(medals);
-  closeSheet();
-  renderWall();
-  showToast('🏅 ¡Medalla guardada!');
+  const distVal = document.getElementById('fDist').value === 'Otro'
+    ? (document.getElementById('fDistCustom').value.trim() || 'Otro')
+    : document.getElementById('fDist').value;
+
+  if (editingId) {
+    const idx = medals.findIndex(m => m.id === editingId);
+    if (idx !== -1) {
+      medals[idx] = {
+        ...medals[idx],
+        image: currentImage,
+        name: document.getElementById('fName').value.trim() || 'Sin nombre',
+        date: document.getElementById('fDate').value,
+        distance: distVal,
+        time: document.getElementById('fTime').value.trim(),
+        position: document.getElementById('fPos').value.trim(),
+        ribbon: selectedRibbon,
+      };
+    }
+    editingId = null;
+    saveMedals(medals);
+    closeSheet();
+    renderWall();
+    showToast('✏️ Medalla actualizada');
+  } else {
+    const medal = {
+      id: uid(),
+      image: currentImage,
+      name: document.getElementById('fName').value.trim() || 'Sin nombre',
+      date: document.getElementById('fDate').value,
+      distance: distVal,
+      time: document.getElementById('fTime').value.trim(),
+      position: document.getElementById('fPos').value.trim(),
+      ribbon: selectedRibbon,
+    };
+    medals.unshift(medal);
+    saveMedals(medals);
+    closeSheet();
+    renderWall();
+    showToast('🏅 ¡Medalla guardada!');
+  }
 });
 
 // ── DETAIL ──
@@ -716,6 +788,13 @@ function openDetail(id) {
 document.getElementById('btnBack').addEventListener('click', () => {
   document.getElementById('detailOverlay').classList.remove('open');
   activeId = null;
+});
+
+document.getElementById('btnEdit').addEventListener('click', () => {
+  const m = medals.find(x => x.id === activeId);
+  if (!m) return;
+  document.getElementById('detailOverlay').classList.remove('open');
+  openSheet(m);
 });
 
 document.getElementById('btnDelete').addEventListener('click', () => {
