@@ -28,7 +28,11 @@
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      background: var(--bg);
+      background:
+        repeating-linear-gradient(90deg, rgba(0,0,0,.18) 0px, rgba(0,0,0,.18) 2px, transparent 2px, transparent 8px),
+        repeating-linear-gradient(90deg, rgba(255,190,110,.04) 0px, rgba(255,190,110,.04) 1px, transparent 1px, transparent 15px),
+        linear-gradient(160deg, #2a1608 0%, #1c0e04 60%, #150a03 100%);
+      background-attachment: fixed;
       color: var(--text);
       font-family: 'Inter', sans-serif;
       min-height: 100dvh;
@@ -39,7 +43,10 @@
     .app-header {
       display: flex; align-items: center; gap: 10px;
       padding: 13px 18px;
-      background: var(--wood);
+      background:
+        repeating-linear-gradient(90deg, rgba(0,0,0,.22) 0px, rgba(0,0,0,.22) 2px, transparent 2px, transparent 8px),
+        repeating-linear-gradient(90deg, rgba(255,190,110,.05) 0px, rgba(255,190,110,.05) 1px, transparent 1px, transparent 15px),
+        linear-gradient(180deg, #241206 0%, #170b03 100%);
       border-bottom: 1px solid var(--border);
       position: sticky; top: 0; z-index: 20;
     }
@@ -57,7 +64,9 @@
       padding: 24px 16px 110px;
       background:
         repeating-linear-gradient(0deg, transparent 0, transparent 39px, rgba(0,0,0,.09) 39px, rgba(0,0,0,.09) 40px),
-        repeating-linear-gradient(90deg, transparent 0, transparent 99px, rgba(255,255,255,.012) 99px, rgba(255,255,255,.012) 100px),
+        repeating-linear-gradient(90deg, rgba(0,0,0,.16) 0px, rgba(0,0,0,.16) 2px, transparent 2px, transparent 8px),
+        repeating-linear-gradient(90deg, rgba(255,190,110,.045) 0px, rgba(255,190,110,.045) 1px, transparent 1px, transparent 15px),
+        repeating-linear-gradient(90deg, rgba(0,0,0,.09) 0px, rgba(0,0,0,.09) 4px, transparent 4px, transparent 27px),
         linear-gradient(160deg, #3d2010 0%, #1e0f05 35%, #2f1607 70%, #160b03 100%);
     }
 
@@ -263,7 +272,10 @@
       display: flex; align-items: center; gap: 10px;
       padding: 13px 16px;
       border-bottom: 1px solid var(--border);
-      background: var(--wood);
+      background:
+        repeating-linear-gradient(90deg, rgba(0,0,0,.22) 0px, rgba(0,0,0,.22) 2px, transparent 2px, transparent 8px),
+        repeating-linear-gradient(90deg, rgba(255,190,110,.05) 0px, rgba(255,190,110,.05) 1px, transparent 1px, transparent 15px),
+        linear-gradient(180deg, #241206 0%, #170b03 100%);
       position: sticky; top: 0; z-index: 5;
     }
     .btn-back {
@@ -281,6 +293,9 @@
       padding: 30px 20px 14px;
       background:
         repeating-linear-gradient(0deg, transparent 0, transparent 39px, rgba(0,0,0,.09) 39px, rgba(0,0,0,.09) 40px),
+        repeating-linear-gradient(90deg, rgba(0,0,0,.16) 0px, rgba(0,0,0,.16) 2px, transparent 2px, transparent 8px),
+        repeating-linear-gradient(90deg, rgba(255,190,110,.045) 0px, rgba(255,190,110,.045) 1px, transparent 1px, transparent 15px),
+        repeating-linear-gradient(90deg, rgba(0,0,0,.09) 0px, rgba(0,0,0,.09) 4px, transparent 4px, transparent 27px),
         linear-gradient(160deg, #3d2010 0%, #1e0f05 50%, #2f1607 100%);
     }
     .detail-hook {
