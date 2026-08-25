@@ -107,7 +107,7 @@
     .medal-frame {
       position: relative;
       display: flex; flex-direction: column; align-items: center;
-      width: 152px; height: 224px;
+      width: 152px; height: 232px;
       padding: 20px 10px 8px;
       border-radius: 8px;
       background: linear-gradient(160deg, #241407 0%, #170d05 100%);
@@ -152,25 +152,30 @@
     }
     .medal-disc img { width: 100%; height: 100%; object-fit: cover; }
     .medal-plaque {
-      margin-top: 10px; width: 100%; height: 58px; position: relative; z-index: 1;
+      margin-top: 10px; width: 100%; height: 66px; position: relative; z-index: 1;
       background: linear-gradient(160deg, #3a2a12 0%, #1f1408 100%);
       border: 1px solid rgba(255,215,0,.32);
       border-radius: 5px;
       padding: 5px 5px 4px;
-      text-align: center;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      display: flex; flex-direction: column; align-items: center;
+      overflow: hidden;
+    }
+    .medal-plaque-name-wrap {
+      flex: 1 1 auto; min-height: 0; width: 100%;
+      display: flex; align-items: center; justify-content: center;
       overflow: hidden;
     }
     .medal-plaque-name {
-      width: 100%;
+      width: 100%; text-align: center;
       font-size: 10.5px; font-weight: 700; color: var(--accent-light);
       line-height: 1.22; letter-spacing: .2px;
       overflow-wrap: break-word;
     }
     .medal-plaque-meta {
+      flex-shrink: 0; width: 100%; text-align: center;
       font-size: 9px; color: var(--muted);
       font-family: 'Space Mono', monospace; margin-top: 3px;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
 
     /* ── FAB ── */
@@ -653,7 +658,7 @@ function renderWall() {
           <img src="${m.image}" alt="${m.name}" loading="lazy" />
         </div>
         <div class="medal-plaque">
-          <div class="medal-plaque-name">${m.name}</div>
+          <div class="medal-plaque-name-wrap"><div class="medal-plaque-name">${m.name}</div></div>
           <div class="medal-plaque-meta">${m.distance}${m.time ? ' · ' + m.time : ''}</div>
         </div>
       </div>`;
@@ -666,12 +671,13 @@ function renderWall() {
   fitPlaqueNames();
 }
 
-// ── shrink plaque name font until the full text fits inside the fixed-size frame ──
+// ── shrink plaque name font until the full text fits inside its reserved space, without pushing meta out ──
 function fitPlaqueNames() {
   document.querySelectorAll('.medal-plaque-name').forEach(el => {
+    const wrap = el.parentElement;
     let size = 10.5;
     el.style.fontSize = size + 'px';
-    while (el.scrollHeight > el.clientHeight + 1 && size > 6.5) {
+    while (el.scrollHeight > wrap.clientHeight + 1 && size > 6.5) {
       size -= 0.5;
       el.style.fontSize = size + 'px';
     }
