@@ -107,7 +107,7 @@
     .medal-frame {
       position: relative;
       display: flex; flex-direction: column; align-items: center;
-      width: 152px; height: 210px;
+      width: 152px; height: 224px;
       padding: 20px 10px 8px;
       border-radius: 8px;
       background: linear-gradient(160deg, #241407 0%, #170d05 100%);
@@ -141,7 +141,7 @@
       position: relative; z-index: 1;
     }
     .medal-ribbon {
-      width: 7px; height: 26px;
+      width: 15px; height: 26px;
       flex-shrink: 0; position: relative; z-index: 1;
     }
     .medal-disc {
@@ -152,11 +152,11 @@
     }
     .medal-disc img { width: 100%; height: 100%; object-fit: cover; }
     .medal-plaque {
-      margin-top: 10px; width: 100%; height: 44px; position: relative; z-index: 1;
+      margin-top: 10px; width: 100%; height: 58px; position: relative; z-index: 1;
       background: linear-gradient(160deg, #3a2a12 0%, #1f1408 100%);
       border: 1px solid rgba(255,215,0,.32);
       border-radius: 5px;
-      padding: 6px 6px 5px;
+      padding: 5px 5px 4px;
       text-align: center;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       overflow: hidden;
@@ -164,8 +164,8 @@
     .medal-plaque-name {
       width: 100%;
       font-size: 10.5px; font-weight: 700; color: var(--accent-light);
-      line-height: 1.25; letter-spacing: .2px;
-      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+      line-height: 1.22; letter-spacing: .2px;
+      overflow-wrap: break-word;
     }
     .medal-plaque-meta {
       font-size: 9px; color: var(--muted);
@@ -355,7 +355,7 @@
       border: 4px solid #5a3c10; border-bottom: none; border-radius: 12px 12px 0 0;
       position: relative; z-index: 1;
     }
-    .detail-ribbon { width: 9px; height: 40px; position: relative; z-index: 1; }
+    .detail-ribbon { width: 22px; height: 40px; position: relative; z-index: 1; }
     .detail-disc {
       width: 200px; height: 200px; border-radius: 50%; overflow: hidden;
       background: var(--surface2); flex-shrink: 0; position: relative; z-index: 1;
@@ -663,6 +663,19 @@ function renderWall() {
 
   wall.innerHTML = '';
   wall.appendChild(grid);
+  fitPlaqueNames();
+}
+
+// ── shrink plaque name font until the full text fits inside the fixed-size frame ──
+function fitPlaqueNames() {
+  document.querySelectorAll('.medal-plaque-name').forEach(el => {
+    let size = 10.5;
+    el.style.fontSize = size + 'px';
+    while (el.scrollHeight > el.clientHeight + 1 && size > 6.5) {
+      size -= 0.5;
+      el.style.fontSize = size + 'px';
+    }
+  });
 }
 
 // ── SHEET ──
