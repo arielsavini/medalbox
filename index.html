@@ -668,6 +668,10 @@ async function initCloudSync() {
       updateAuthUI();
       renderWall();
     });
+    authApi.getRedirectResult(auth).catch(e => {
+      console.error('Error en login por redirect', e);
+      showToast(`⚠ Login falló: ${e.code || e.message}`);
+    });
     if (syncCode) subscribeToBox(syncCode);
   } catch(e) {
     console.error('No se pudo iniciar la sincronización en la nube', e);
@@ -682,7 +686,10 @@ async function signInWithGoogle() {
     await authApi.signInWithPopup(auth, googleProvider);
   } catch(e) {
     console.error(e);
-    showToast('⚠ No se pudo iniciar sesión');
+    if (e.code === 'auth/popup-blocked' || e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request') {
+      try { await authApi.signInWithRedirect(auth, googleProvider); return; } catch(e2) { console.error(e2); }
+    }
+    showToast(`⚠ Login falló: ${e.code || e.message}`);
   }
 }
 
