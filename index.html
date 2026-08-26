@@ -141,6 +141,11 @@
       background: linear-gradient(135deg, rgba(255,255,255,.09) 0%, rgba(255,255,255,.02) 32%, transparent 55%);
       pointer-events: none;
     }
+    .medal-route-badge {
+      position: absolute; top: 5px; right: 5px; z-index: 2;
+      font-size: 12px; line-height: 1; padding: 3px 4px; border-radius: 6px;
+      background: rgba(0,0,0,.55); border: 1px solid rgba(255,215,0,.35);
+    }
     .medal-hook {
       width: 16px; height: 10px;
       border: 3.5px solid #5a3c10;
@@ -251,6 +256,8 @@
       object-fit: contain; border-radius: 12px; padding: 10px;
     }
     .upload-preview.show { display: block; }
+    .upload-zone-route .upload-placeholder { padding: 18px 16px; }
+    .upload-zone-route .upload-placeholder-icon { font-size: 28px; margin-bottom: 6px; }
 
     /* ── BG REMOVAL BUTTON ── */
     .btn-remove-bg {
@@ -386,6 +393,15 @@
     }
     .stat-tile-val { font-size: 24px; font-weight: 900; color: var(--accent); line-height: 1; }
     .stat-tile-lbl { font-size: 9px; font-family: 'Space Mono', monospace; color: var(--muted); margin-top: 5px; text-transform: uppercase; letter-spacing: 1px; }
+    .route-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 12px; margin-bottom: 16px;
+    }
+    .route-card-label {
+      font-size: 10px; font-family: 'Space Mono', monospace; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;
+    }
+    .route-card img { width: 100%; border-radius: 10px; display: block; }
     .btn-share {
       width: 100%; padding: 14px; margin-bottom: 10px;
       background: var(--accent); color: #000;
@@ -486,6 +502,20 @@
         ✨ QUITAR FONDO CON IA  (descarga un modelo la primera vez)
       </button>
 
+      <!-- Route/circuit map (exported from Strava) -->
+      <div class="upload-zone upload-zone-route" id="routeZone">
+        <input type="file" id="routeInput" accept="image/*" />
+        <img class="upload-preview" id="routePreview" alt="circuito" />
+        <div class="upload-placeholder" id="routePlaceholder">
+          <div class="upload-placeholder-icon">🗺️</div>
+          <div class="upload-placeholder-text">
+            <strong>Circuito (opcional)</strong>
+            subí la imagen del recorrido exportada de Strava
+          </div>
+        </div>
+      </div>
+      <button class="btn-sheet-close" id="btnRouteRemove" style="width:100%; margin-bottom:12px; display:none;">✕ Quitar circuito</button>
+
       <!-- Stats form -->
       <div class="form-field">
         <label>Nombre del evento</label>
@@ -558,6 +588,10 @@
     <h2 id="detailName"></h2>
     <div class="detail-date" id="detailDate"></div>
     <div class="stats-grid" id="detailStats"></div>
+    <div class="route-card" id="routeCard" style="display:none;">
+      <div class="route-card-label">🗺️ Circuito</div>
+      <img id="routeCardImg" src="" alt="circuito" />
+    </div>
     <button class="btn-share" id="btnShare">📤 COMPARTIR EN REDES</button>
     <button class="btn-edit" id="btnEdit">✏️ EDITAR MEDALLA</button>
     <button class="btn-delete" id="btnDelete">🗑 Eliminar medalla</button>
@@ -590,6 +624,7 @@ function saveMedals(arr) {
 // ── STATE ──
 let medals = loadMedals();
 let currentImage = null; // base64 compressed
+let currentRouteImage = null; // base64 compressed circuito/mapa (opcional)
 let selectedRibbon = 'gold';
 let activeId = null;
 let editingId = null;
@@ -794,6 +829,7 @@ function renderWall() {
     el.innerHTML = `
       <div class="medal-frame">
         <div class="medal-frame-glass"></div>
+        ${m.routeImage ? '<div class="medal-route-badge" title="Tiene circuito">🗺️</div>' : ''}
         <div class="medal-hook"></div>
         <div class="medal-ribbon" style="background:${rc}"></div>
         <div class="medal-disc">
@@ -839,6 +875,7 @@ function openSheet(medalToEdit = null) {
   if (!canEdit()) { signInWithGoogle(); return; }
   editingId = medalToEdit ? medalToEdit.id : null;
   currentImage = medalToEdit ? medalToEdit.image : null;
+  currentRouteImage = medalToEdit ? (medalToEdit.routeImage || null) : null;
   selectedRibbon = medalToEdit ? medalToEdit.ribbon : 'gold';
 
   document.getElementById('sheetTitle').textContent = medalToEdit ? '✏️ Editar medalla' : '🏅 Nueva medalla';
@@ -856,6 +893,19 @@ function openSheet(medalToEdit = null) {
     document.getElementById('uploadPreview').src = '';
     document.getElementById('uploadPlaceholder').style.display = '';
     document.getElementById('btnRemoveBg').classList.remove('show');
+  }
+
+  document.getElementById('routeInput').value = '';
+  if (currentRouteImage) {
+    document.getElementById('routePreview').src = currentRouteImage;
+    document.getElementById('routePreview').classList.add('show');
+    document.getElementById('routePlaceholder').style.display = 'none';
+    document.getElementById('btnRouteRemove').style.display = '';
+  } else {
+    document.getElementById('routePreview').classList.remove('show');
+    document.getElementById('routePreview').src = '';
+    document.getElementById('routePlaceholder').style.display = '';
+    document.getElementById('btnRouteRemove').style.display = 'none';
   }
 
   document.getElementById('fName').value = medalToEdit ? medalToEdit.name : '';
@@ -921,6 +971,36 @@ document.getElementById('fileInput').addEventListener('change', async e => {
   finally { hideLoading(); }
 });
 
+// ── ROUTE / CIRCUITO (exportado de Strava) ──
+document.getElementById('routeInput').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  showLoading('Cargando circuito…');
+  try {
+    const reader = new FileReader();
+    const raw = await new Promise((res, rej) => {
+      reader.onload = ev => res(ev.target.result);
+      reader.onerror = rej;
+      reader.readAsDataURL(file);
+    });
+    currentRouteImage = await compressImage(raw);
+    document.getElementById('routePreview').src = currentRouteImage;
+    document.getElementById('routePreview').classList.add('show');
+    document.getElementById('routePlaceholder').style.display = 'none';
+    document.getElementById('btnRouteRemove').style.display = '';
+  } catch { showToast('Error al cargar el circuito'); }
+  finally { hideLoading(); }
+});
+
+document.getElementById('btnRouteRemove').addEventListener('click', () => {
+  currentRouteImage = null;
+  document.getElementById('routeInput').value = '';
+  document.getElementById('routePreview').classList.remove('show');
+  document.getElementById('routePreview').src = '';
+  document.getElementById('routePlaceholder').style.display = '';
+  document.getElementById('btnRouteRemove').style.display = 'none';
+});
+
 // ── BACKGROUND REMOVAL ──
 document.getElementById('btnRemoveBg').addEventListener('click', async () => {
   const file = document.getElementById('fileInput').files[0];
@@ -971,6 +1051,7 @@ document.getElementById('btnSave').addEventListener('click', () => {
       medals[idx] = {
         ...medals[idx],
         image: currentImage,
+        routeImage: currentRouteImage || '',
         name: document.getElementById('fName').value.trim() || 'Sin nombre',
         date: document.getElementById('fDate').value,
         distance: distVal,
@@ -989,6 +1070,7 @@ document.getElementById('btnSave').addEventListener('click', () => {
     const medal = {
       id: uid(),
       image: currentImage,
+      routeImage: currentRouteImage || '',
       name: document.getElementById('fName').value.trim() || 'Sin nombre',
       date: document.getElementById('fDate').value,
       distance: distVal,
@@ -1033,6 +1115,13 @@ function openDetail(id) {
       <div class="stat-tile-lbl">${t.lbl}</div>
     </div>`
   ).join('');
+
+  if (m.routeImage) {
+    document.getElementById('routeCardImg').src = m.routeImage;
+    document.getElementById('routeCard').style.display = '';
+  } else {
+    document.getElementById('routeCard').style.display = 'none';
+  }
 
   document.getElementById('btnEdit').style.display = canEdit() ? '' : 'none';
   document.getElementById('btnDelete').style.display = canEdit() ? '' : 'none';
@@ -1136,6 +1225,35 @@ async function buildShareCard(medal) {
     };
     img.src = medal.image;
   });
+
+  // Route/circuit thumbnail (top-right corner), if present
+  if (medal.routeImage) {
+    await new Promise(resolve => {
+      const rimg = new Image();
+      rimg.onload = () => {
+        const rw = 190, rh = 190, rx = S - rw - 36, ry = 36, radius = 14;
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(rx + radius, ry);
+        ctx.arcTo(rx + rw, ry, rx + rw, ry + rh, radius);
+        ctx.arcTo(rx + rw, ry + rh, rx, ry + rh, radius);
+        ctx.arcTo(rx, ry + rh, rx, ry, radius);
+        ctx.arcTo(rx, ry, rx + rw, ry, radius);
+        ctx.closePath();
+        ctx.clip();
+        ctx.fillStyle = '#1c0e04';
+        ctx.fillRect(rx, ry, rw, rh);
+        const ratio = Math.min(rw / rimg.width, rh / rimg.height);
+        const dw = rimg.width * ratio, dh = rimg.height * ratio;
+        ctx.drawImage(rimg, rx + (rw - dw) / 2, ry + (rh - dh) / 2, dw, dh);
+        ctx.restore();
+        ctx.strokeStyle = 'rgba(255,215,0,.45)'; ctx.lineWidth = 2;
+        ctx.strokeRect(rx, ry, rw, rh);
+        resolve();
+      };
+      rimg.src = medal.routeImage;
+    });
+  }
 
   // Event name (word-wrap)
   ctx.textAlign = 'center'; ctx.fillStyle = '#f5e8d0';
