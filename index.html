@@ -516,6 +516,20 @@
       </div>
       <button class="btn-sheet-close" id="btnRouteRemove" style="width:100%; margin-bottom:12px; display:none;">✕ Quitar circuito</button>
 
+      <!-- Runner photo (optional) -->
+      <div class="upload-zone upload-zone-route" id="runnerZone">
+        <input type="file" id="runnerInput" accept="image/*" />
+        <img class="upload-preview" id="runnerPreview" alt="corredor" />
+        <div class="upload-placeholder" id="runnerPlaceholder">
+          <div class="upload-placeholder-icon">🏃</div>
+          <div class="upload-placeholder-text">
+            <strong>Foto del corredor (opcional)</strong>
+            subí una foto tuya durante la carrera
+          </div>
+        </div>
+      </div>
+      <button class="btn-sheet-close" id="btnRunnerRemove" style="width:100%; margin-bottom:12px; display:none;">✕ Quitar foto</button>
+
       <!-- Stats form -->
       <div class="form-field">
         <label>Nombre del evento</label>
@@ -592,6 +606,10 @@
       <div class="route-card-label">🗺️ Circuito</div>
       <img id="routeCardImg" src="" alt="circuito" />
     </div>
+    <div class="route-card" id="runnerCard" style="display:none;">
+      <div class="route-card-label">🏃 Corredor</div>
+      <img id="runnerCardImg" src="" alt="corredor" />
+    </div>
     <button class="btn-share" id="btnShare">📤 COMPARTIR EN REDES</button>
     <button class="btn-edit" id="btnEdit">✏️ EDITAR MEDALLA</button>
     <button class="btn-delete" id="btnDelete">🗑 Eliminar medalla</button>
@@ -625,6 +643,7 @@ function saveMedals(arr) {
 let medals = loadMedals();
 let currentImage = null; // base64 compressed
 let currentRouteImage = null; // base64 compressed circuito/mapa (opcional)
+let currentRunnerImage = null; // base64 compressed foto del corredor (opcional)
 let selectedRibbon = 'gold';
 let activeId = null;
 let editingId = null;
@@ -876,6 +895,7 @@ function openSheet(medalToEdit = null) {
   editingId = medalToEdit ? medalToEdit.id : null;
   currentImage = medalToEdit ? medalToEdit.image : null;
   currentRouteImage = medalToEdit ? (medalToEdit.routeImage || null) : null;
+  currentRunnerImage = medalToEdit ? (medalToEdit.runnerImage || null) : null;
   selectedRibbon = medalToEdit ? medalToEdit.ribbon : 'gold';
 
   document.getElementById('sheetTitle').textContent = medalToEdit ? '✏️ Editar medalla' : '🏅 Nueva medalla';
@@ -906,6 +926,19 @@ function openSheet(medalToEdit = null) {
     document.getElementById('routePreview').src = '';
     document.getElementById('routePlaceholder').style.display = '';
     document.getElementById('btnRouteRemove').style.display = 'none';
+  }
+
+  document.getElementById('runnerInput').value = '';
+  if (currentRunnerImage) {
+    document.getElementById('runnerPreview').src = currentRunnerImage;
+    document.getElementById('runnerPreview').classList.add('show');
+    document.getElementById('runnerPlaceholder').style.display = 'none';
+    document.getElementById('btnRunnerRemove').style.display = '';
+  } else {
+    document.getElementById('runnerPreview').classList.remove('show');
+    document.getElementById('runnerPreview').src = '';
+    document.getElementById('runnerPlaceholder').style.display = '';
+    document.getElementById('btnRunnerRemove').style.display = 'none';
   }
 
   document.getElementById('fName').value = medalToEdit ? medalToEdit.name : '';
@@ -1001,6 +1034,36 @@ document.getElementById('btnRouteRemove').addEventListener('click', () => {
   document.getElementById('btnRouteRemove').style.display = 'none';
 });
 
+// ── FOTO DEL CORREDOR ──
+document.getElementById('runnerInput').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  showLoading('Cargando foto…');
+  try {
+    const reader = new FileReader();
+    const raw = await new Promise((res, rej) => {
+      reader.onload = ev => res(ev.target.result);
+      reader.onerror = rej;
+      reader.readAsDataURL(file);
+    });
+    currentRunnerImage = await compressImage(raw);
+    document.getElementById('runnerPreview').src = currentRunnerImage;
+    document.getElementById('runnerPreview').classList.add('show');
+    document.getElementById('runnerPlaceholder').style.display = 'none';
+    document.getElementById('btnRunnerRemove').style.display = '';
+  } catch { showToast('Error al cargar la foto'); }
+  finally { hideLoading(); }
+});
+
+document.getElementById('btnRunnerRemove').addEventListener('click', () => {
+  currentRunnerImage = null;
+  document.getElementById('runnerInput').value = '';
+  document.getElementById('runnerPreview').classList.remove('show');
+  document.getElementById('runnerPreview').src = '';
+  document.getElementById('runnerPlaceholder').style.display = '';
+  document.getElementById('btnRunnerRemove').style.display = 'none';
+});
+
 // ── BACKGROUND REMOVAL ──
 document.getElementById('btnRemoveBg').addEventListener('click', async () => {
   const file = document.getElementById('fileInput').files[0];
@@ -1052,6 +1115,7 @@ document.getElementById('btnSave').addEventListener('click', () => {
         ...medals[idx],
         image: currentImage,
         routeImage: currentRouteImage || '',
+        runnerImage: currentRunnerImage || '',
         name: document.getElementById('fName').value.trim() || 'Sin nombre',
         date: document.getElementById('fDate').value,
         distance: distVal,
@@ -1071,6 +1135,7 @@ document.getElementById('btnSave').addEventListener('click', () => {
       id: uid(),
       image: currentImage,
       routeImage: currentRouteImage || '',
+      runnerImage: currentRunnerImage || '',
       name: document.getElementById('fName').value.trim() || 'Sin nombre',
       date: document.getElementById('fDate').value,
       distance: distVal,
@@ -1121,6 +1186,13 @@ function openDetail(id) {
     document.getElementById('routeCard').style.display = '';
   } else {
     document.getElementById('routeCard').style.display = 'none';
+  }
+
+  if (m.runnerImage) {
+    document.getElementById('runnerCardImg').src = m.runnerImage;
+    document.getElementById('runnerCard').style.display = '';
+  } else {
+    document.getElementById('runnerCard').style.display = 'none';
   }
 
   document.getElementById('btnEdit').style.display = canEdit() ? '' : 'none';
