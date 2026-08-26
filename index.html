@@ -41,7 +41,7 @@
 
     /* ── HEADER ── */
     .app-header {
-      display: flex; align-items: center; gap: 10px;
+      display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
       padding: 13px 18px;
       background:
         repeating-linear-gradient(90deg, rgba(0,0,0,.22) 0px, rgba(0,0,0,.22) 2px, transparent 2px, transparent 8px),
@@ -447,6 +447,7 @@
   <span style="font-size:22px;line-height:1">🏅</span>
   <h1>Medal<span class="accent">Box</span></h1>
   <div class="medal-count" id="medalCount">0 medallas</div>
+  <button class="sync-badge" id="authBtn" title="Iniciar sesión con Google">🔐 Iniciar sesión</button>
   <button class="sync-badge" id="syncBadge" title="Sincronizar entre dispositivos">⚠ sin código</button>
 </div>
 
@@ -629,26 +630,73 @@ const firebaseConfig = {
   appId: "TU_APP_ID_AQUI",
 };
 const CLOUD_ENABLED = firebaseConfig.apiKey !== 'TU_API_KEY_AQUI';
+const ALLOWED_EMAIL = 'arielsavini@gmail.com';
 
 let db = null;
 let fsApi = null;
+let authApi = null;
+let auth = null;
+let googleProvider = null;
+let currentUser = null;
 let syncCode = localStorage.getItem('medalbox_sync_code') || '';
 let unsubscribeBox = null;
 
+function canEdit() {
+  return CLOUD_ENABLED && !!currentUser && currentUser.email === ALLOWED_EMAIL;
+}
+
 async function initCloudSync() {
   updateSyncUI();
+  updateAuthUI();
   if (!CLOUD_ENABLED) return;
   try {
     const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js');
     fsApi = await import('https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js');
+    authApi = await import('https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js');
     const app = initializeApp(firebaseConfig);
     db = fsApi.getFirestore(app);
+    auth = authApi.getAuth(app);
+    googleProvider = new authApi.GoogleAuthProvider();
     try { await fsApi.enableIndexedDbPersistence(db); } catch { /* varias pestañas abiertas: ignorar */ }
+    authApi.onAuthStateChanged(auth, user => {
+      currentUser = user;
+      if (user && user.email !== ALLOWED_EMAIL) {
+        showToast('⚠ Esta cuenta no tiene permiso para editar esta vitrina');
+        authApi.signOut(auth);
+        return;
+      }
+      updateAuthUI();
+      renderWall();
+    });
     if (syncCode) subscribeToBox(syncCode);
   } catch(e) {
     console.error('No se pudo iniciar la sincronización en la nube', e);
     showToast('⚠ No se pudo conectar con la nube, usando datos locales');
   }
+}
+
+async function signInWithGoogle() {
+  if (!CLOUD_ENABLED) { showToast('⚠ Configurá Firebase para poder iniciar sesión'); return; }
+  if (!auth) { showToast('⏳ La conexión con la nube todavía está iniciando, probá de nuevo'); return; }
+  try {
+    await authApi.signInWithPopup(auth, googleProvider);
+  } catch(e) {
+    console.error(e);
+    showToast('⚠ No se pudo iniciar sesión');
+  }
+}
+
+async function signOutUser() {
+  if (!auth) return;
+  await authApi.signOut(auth);
+  showToast('Sesión cerrada');
+}
+
+function updateAuthUI() {
+  const btn = document.getElementById('authBtn');
+  if (!btn) return;
+  if (!CLOUD_ENABLED) { btn.textContent = '🔐 sin config'; return; }
+  btn.textContent = canEdit() ? '✅ Ariel' : (currentUser ? '🚫 sin permiso' : '🔐 Iniciar sesión');
 }
 
 function subscribeToBox(code) {
@@ -704,6 +752,14 @@ function updateSyncUI() {
   badge.textContent = syncCode ? `🔗 ${syncCode}` : '⚠ sin código';
 }
 
+document.getElementById('authBtn').addEventListener('click', () => {
+  if (canEdit()) {
+    if (confirm('¿Cerrar sesión?')) signOutUser();
+  } else {
+    signInWithGoogle();
+  }
+});
+
 // ── UID ──
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
@@ -744,10 +800,11 @@ function renderWall() {
       <div class="empty-state">
         <div class="empty-icon">🏆</div>
         <div class="empty-title">Tu vitrina está vacía</div>
-        <div class="empty-sub">Cada medalla es un logro que merece ser recordado. ¡Comenzá tu colección!</div>
-        <button class="btn-empty-add" id="btnEmptyAdd">+ Agregar primera medalla</button>
+        <div class="empty-sub">${canEdit() ? 'Cada medalla es un logro que merece ser recordado. ¡Comenzá tu colección!' : 'Iniciá sesión con la cuenta autorizada para agregar medallas.'}</div>
+        <button class="btn-empty-add" id="btnEmptyAdd">${canEdit() ? '+ Agregar primera medalla' : '🔐 Iniciar sesión'}</button>
       </div>`;
-    document.getElementById('btnEmptyAdd').addEventListener('click', () => openSheet());
+    document.getElementById('btnEmptyAdd').addEventListener('click', () => canEdit() ? openSheet() : signInWithGoogle());
+    updateFabUI();
     return;
   }
 
@@ -786,6 +843,14 @@ function renderWall() {
   wall.innerHTML = '';
   wall.appendChild(grid);
   fitPlaqueNames();
+  updateFabUI();
+}
+
+function updateFabUI() {
+  const fab = document.getElementById('fabAdd');
+  if (!fab) return;
+  fab.textContent = canEdit() ? '+' : '🔒';
+  fab.title = canEdit() ? 'Agregar medalla' : 'Iniciá sesión con la cuenta autorizada para agregar medallas';
 }
 
 // ── shrink plaque name font until the full text fits inside its reserved space, without pushing meta out ──
@@ -803,6 +868,7 @@ function fitPlaqueNames() {
 
 // ── SHEET ──
 function openSheet(medalToEdit = null) {
+  if (!canEdit()) { signInWithGoogle(); return; }
   editingId = medalToEdit ? medalToEdit.id : null;
   currentImage = medalToEdit ? medalToEdit.image : null;
   selectedRibbon = medalToEdit ? medalToEdit.ribbon : 'gold';
@@ -856,7 +922,10 @@ document.getElementById('fDist').addEventListener('change', e => {
   if (!isOtro) document.getElementById('fDistCustom').value = '';
 });
 
-document.getElementById('fabAdd').addEventListener('click', () => openSheet());
+document.getElementById('fabAdd').addEventListener('click', () => {
+  if (!canEdit()) { signInWithGoogle(); return; }
+  openSheet();
+});
 document.getElementById('btnSheetClose').addEventListener('click', closeSheet);
 document.getElementById('sheetOverlay').addEventListener('click', e => {
   if (e.target === document.getElementById('sheetOverlay')) closeSheet();
@@ -942,7 +1011,7 @@ document.getElementById('ribbonChips').addEventListener('click', e => {
 
 // ── SAVE ──
 document.getElementById('btnSave').addEventListener('click', () => {
-  if (!currentImage) return;
+  if (!canEdit() || !currentImage) return;
   const distVal = document.getElementById('fDist').value === 'Otro'
     ? (document.getElementById('fDistCustom').value.trim() || 'Otro')
     : document.getElementById('fDist').value;
@@ -1016,6 +1085,8 @@ function openDetail(id) {
     </div>`
   ).join('');
 
+  document.getElementById('btnEdit').style.display = canEdit() ? '' : 'none';
+  document.getElementById('btnDelete').style.display = canEdit() ? '' : 'none';
   document.getElementById('detailOverlay').classList.add('open');
 }
 
@@ -1025,6 +1096,7 @@ document.getElementById('btnBack').addEventListener('click', () => {
 });
 
 document.getElementById('btnEdit').addEventListener('click', () => {
+  if (!canEdit()) return;
   const m = medals.find(x => x.id === activeId);
   if (!m) return;
   document.getElementById('detailOverlay').classList.remove('open');
@@ -1032,7 +1104,7 @@ document.getElementById('btnEdit').addEventListener('click', () => {
 });
 
 document.getElementById('btnDelete').addEventListener('click', () => {
-  if (!activeId || !confirm('¿Eliminar esta medalla?')) return;
+  if (!canEdit() || !activeId || !confirm('¿Eliminar esta medalla?')) return;
   const idToDelete = activeId;
   medals = medals.filter(m => m.id !== idToDelete);
   saveMedals(medals);
