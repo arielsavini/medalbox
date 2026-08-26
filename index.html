@@ -483,7 +483,7 @@
 
       <!-- BG removal -->
       <button class="btn-remove-bg" id="btnRemoveBg">
-        ✨ QUITAR FONDO CON IA  (descarga ~25 MB la primera vez)
+        ✨ QUITAR FONDO CON IA  (descarga un modelo la primera vez)
       </button>
 
       <!-- Stats form -->
@@ -844,7 +844,7 @@ function openSheet(medalToEdit = null) {
   document.getElementById('sheetTitle').textContent = medalToEdit ? '✏️ Editar medalla' : '🏅 Nueva medalla';
   document.getElementById('fileInput').value = '';
   document.getElementById('btnRemoveBg').disabled = false;
-  document.getElementById('btnRemoveBg').textContent = '✨ QUITAR FONDO CON IA  (descarga ~25 MB la primera vez)';
+  document.getElementById('btnRemoveBg').textContent = '✨ QUITAR FONDO CON IA  (descarga un modelo la primera vez)';
 
   if (medalToEdit) {
     document.getElementById('uploadPreview').src = medalToEdit.image;
@@ -927,14 +927,17 @@ document.getElementById('btnRemoveBg').addEventListener('click', async () => {
   if (!file) return;
   const btn = document.getElementById('btnRemoveBg');
   btn.disabled = true;
-  showLoading('Cargando modelo de IA…\n(~25 MB, solo la primera vez)');
+  showLoading('Cargando modelo de IA…\n(la primera vez puede tardar)');
   try {
     const { removeBackground } = await import(
-      'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/dist/browser.bundle.js'
+      'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/dist/browser.bundle.js'
     );
-    document.getElementById('loadingMsg').textContent = 'Analizando imagen…';
+    // sin publicPath: usa el CDN oficial de IMG.LY que aloja los modelos onnx/wasm
     const blob = await removeBackground(file, {
-      publicPath: 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/dist/'
+      progress: (key, current, total) => {
+        document.getElementById('loadingMsg').textContent =
+          `Descargando modelo de IA…\n${Math.round((current / total) * 100)}%`;
+      }
     });
     currentImage = await blobToDataURL(blob);
     document.getElementById('uploadPreview').src = currentImage;
@@ -943,7 +946,7 @@ document.getElementById('btnRemoveBg').addEventListener('click', async () => {
   } catch(e) {
     console.error(e);
     btn.disabled = false;
-    showToast('⚠ No se pudo quitar el fondo. Intento cancelado.');
+    showToast(`⚠ No se pudo quitar el fondo: ${e.message || e}`);
   } finally { hideLoading(); }
 });
 
