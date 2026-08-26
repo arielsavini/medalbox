@@ -448,7 +448,6 @@
   <h1>Medal<span class="accent">Box</span></h1>
   <div class="medal-count" id="medalCount">0 medallas</div>
   <button class="sync-badge" id="authBtn" title="Iniciar sesión con Google">🔐 Iniciar sesión</button>
-  <button class="sync-badge" id="syncBadge" title="Sincronizar entre dispositivos">⚠ sin código</button>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -539,28 +538,6 @@
   </div>
 </div>
 
-<!-- ── SYNC SHEET (código para ver la vitrina en otros dispositivos) ── -->
-<div class="sheet-overlay" id="syncSheetOverlay">
-  <div class="bottom-sheet">
-    <div class="sheet-handle"></div>
-    <div class="sheet-header">
-      <div class="sheet-title">🔗 Sincronizar dispositivos</div>
-      <button class="btn-sheet-close" id="btnSyncSheetClose">✕ Cerrar</button>
-    </div>
-    <div class="sheet-body">
-      <p style="font-size:12px; color:var(--muted); line-height:1.6; margin-bottom:14px;">
-        Ingresá o creá un código y usalo en tus otros dispositivos para ver las mismas medallas. No lo compartas con quien no quieras que vea o edite tu vitrina.
-      </p>
-      <div class="form-field">
-        <label>Código de vitrina</label>
-        <input type="text" id="syncCodeInput" placeholder="Ej: AB12C" style="text-transform:uppercase" />
-      </div>
-      <button class="btn-save" id="btnSyncApply">🔗 USAR ESTE CÓDIGO</button>
-      <button class="btn-edit" id="btnSyncGenerate" style="margin-top:10px">✨ Generar código nuevo</button>
-    </div>
-  </div>
-</div>
-
 <!-- ── DETAIL OVERLAY ── -->
 <div class="detail-overlay" id="detailOverlay">
   <div class="detail-header">
@@ -638,15 +615,14 @@ let authApi = null;
 let auth = null;
 let googleProvider = null;
 let currentUser = null;
-let syncCode = localStorage.getItem('medalbox_sync_code') || '';
 let unsubscribeBox = null;
+const BOX_ID = 'ariel-savini'; // vitrina pública única: cualquiera la ve, solo ALLOWED_EMAIL puede editarla
 
 function canEdit() {
   return CLOUD_ENABLED && !!currentUser && currentUser.email === ALLOWED_EMAIL;
 }
 
 async function initCloudSync() {
-  updateSyncUI();
   updateAuthUI();
   if (!CLOUD_ENABLED) return;
   try {
@@ -667,12 +643,13 @@ async function initCloudSync() {
       }
       updateAuthUI();
       renderWall();
+      if (canEdit()) migrateLocalIfNeeded();
     });
     authApi.getRedirectResult(auth).catch(e => {
       console.error('Error en login por redirect', e);
       showToast(`⚠ Login falló: ${e.code || e.message}`);
     });
-    if (syncCode) subscribeToBox(syncCode);
+    subscribeToBox(BOX_ID);
   } catch(e) {
     console.error('No se pudo iniciar la sincronización en la nube', e);
     showToast('⚠ No se pudo conectar con la nube, usando datos locales');
@@ -710,53 +687,37 @@ function subscribeToBox(code) {
   if (unsubscribeBox) { unsubscribeBox(); unsubscribeBox = null; }
   if (!db || !code) return;
   const colRef = fsApi.collection(db, 'boxes', code, 'medals');
-  let first = true;
-  unsubscribeBox = fsApi.onSnapshot(colRef, async snapshot => {
-    if (first && snapshot.empty && medals.length > 0) {
-      // primera vez que se sincroniza este dispositivo: subimos lo que ya teníamos guardado local
-      const batch = fsApi.writeBatch(db);
-      medals.forEach(m => batch.set(fsApi.doc(db, 'boxes', code, 'medals', m.id), m));
-      try { await batch.commit(); } catch(e) { console.error(e); }
-    } else {
-      medals = snapshot.docs.map(d => d.data());
-      saveMedals(medals);
-      renderWall();
-    }
-    first = false;
+  unsubscribeBox = fsApi.onSnapshot(colRef, snapshot => {
+    medals = snapshot.docs.map(d => d.data());
+    saveMedals(medals);
+    renderWall();
   }, err => {
     console.error(err);
     showToast('⚠ Sin conexión con la nube, usando datos locales');
   });
 }
 
+// sube las medallas guardadas localmente antes de configurar la nube, una sola vez
+async function migrateLocalIfNeeded() {
+  if (!db || localStorage.getItem('medalbox_migrated')) return;
+  try {
+    const snap = await fsApi.getDocs(fsApi.collection(db, 'boxes', BOX_ID, 'medals'));
+    if (snap.empty && medals.length > 0) {
+      const batch = fsApi.writeBatch(db);
+      medals.forEach(m => batch.set(fsApi.doc(db, 'boxes', BOX_ID, 'medals', m.id), m));
+      await batch.commit();
+    }
+    localStorage.setItem('medalbox_migrated', '1');
+  } catch(e) { console.error('Error migrando medallas locales', e); }
+}
+
 function cloudSet(medal) {
-  if (!CLOUD_ENABLED || !db || !syncCode) return;
-  fsApi.setDoc(fsApi.doc(db, 'boxes', syncCode, 'medals', medal.id), medal).catch(e => console.error(e));
+  if (!CLOUD_ENABLED || !db) return;
+  fsApi.setDoc(fsApi.doc(db, 'boxes', BOX_ID, 'medals', medal.id), medal).catch(e => console.error(e));
 }
 function cloudDelete(id) {
-  if (!CLOUD_ENABLED || !db || !syncCode) return;
-  fsApi.deleteDoc(fsApi.doc(db, 'boxes', syncCode, 'medals', id)).catch(e => console.error(e));
-}
-
-function setSyncCode(code) {
-  code = code.trim().toUpperCase();
-  if (!code) return;
-  syncCode = code;
-  localStorage.setItem('medalbox_sync_code', code);
-  subscribeToBox(code);
-  updateSyncUI();
-  showToast(`🔗 Sincronizando con código ${code}`);
-}
-
-function genCode() {
-  return Math.random().toString(36).slice(2, 7).toUpperCase();
-}
-
-function updateSyncUI() {
-  const badge = document.getElementById('syncBadge');
-  if (!badge) return;
-  if (!CLOUD_ENABLED) { badge.textContent = '⚠ sync sin config'; return; }
-  badge.textContent = syncCode ? `🔗 ${syncCode}` : '⚠ sin código';
+  if (!CLOUD_ENABLED || !db) return;
+  fsApi.deleteDoc(fsApi.doc(db, 'boxes', BOX_ID, 'medals', id)).catch(e => console.error(e));
 }
 
 document.getElementById('authBtn').addEventListener('click', () => {
@@ -936,28 +897,6 @@ document.getElementById('fabAdd').addEventListener('click', () => {
 document.getElementById('btnSheetClose').addEventListener('click', closeSheet);
 document.getElementById('sheetOverlay').addEventListener('click', e => {
   if (e.target === document.getElementById('sheetOverlay')) closeSheet();
-});
-
-// ── SYNC SHEET ──
-document.getElementById('syncBadge').addEventListener('click', () => {
-  document.getElementById('syncCodeInput').value = syncCode;
-  document.getElementById('syncSheetOverlay').classList.add('open');
-});
-document.getElementById('btnSyncSheetClose').addEventListener('click', () => {
-  document.getElementById('syncSheetOverlay').classList.remove('open');
-});
-document.getElementById('syncSheetOverlay').addEventListener('click', e => {
-  if (e.target === document.getElementById('syncSheetOverlay')) document.getElementById('syncSheetOverlay').classList.remove('open');
-});
-document.getElementById('btnSyncGenerate').addEventListener('click', () => {
-  document.getElementById('syncCodeInput').value = genCode();
-});
-document.getElementById('btnSyncApply').addEventListener('click', () => {
-  if (!CLOUD_ENABLED) { showToast('⚠ Sincronización no configurada todavía'); return; }
-  const val = document.getElementById('syncCodeInput').value;
-  if (!val.trim()) { showToast('Ingresá un código'); return; }
-  setSyncCode(val);
-  document.getElementById('syncSheetOverlay').classList.remove('open');
 });
 
 // ── FILE INPUT ──
